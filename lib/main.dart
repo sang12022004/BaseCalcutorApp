@@ -1,64 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:math_expressions/math_expressions.dart';
 
 void main() {
-  runApp(const CalculatorApp());
+  runApp(MyCalculatorApp());
 }
 
-class CalculatorApp extends StatelessWidget {
-  const CalculatorApp({Key? key}) : super(key: key);
-
+class MyCalculatorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Calculator(),
+      title: 'Máy tính cải tiến',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: CalculatorPage(),
     );
   }
 }
 
-class Calculator extends StatefulWidget {
+class CalculatorPage extends StatefulWidget {
   @override
-  _CalculatorState createState() => _CalculatorState();
+  _CalculatorPageState createState() => _CalculatorPageState();
 }
 
-class _CalculatorState extends State<Calculator> {
-  final _formKey = GlobalKey<FormState>();
-
-  TextEditingController so1Controller = TextEditingController();
-  TextEditingController so2Controller = TextEditingController();
-
+class _CalculatorPageState extends State<CalculatorPage> {
+  String expression = '';
   String result = '';
 
-  void calculate(String operation) {
-    if (_formKey.currentState!.validate()) {
-      double num1 = double.tryParse(so1Controller.text) ?? 0;
-      double num2 = double.tryParse(so2Controller.text) ?? 0;
-      double? res;
+  final List<String> buttons = [
+    'C',
+    'DEL',
+    '(',
+    ')',
+    '7',
+    '8',
+    '9',
+    '/',
+    '4',
+    '5',
+    '6',
+    '*',
+    '1',
+    '2',
+    '3',
+    '-',
+    '0',
+    '.',
+    '=',
+    '+',
+  ];
 
-      switch (operation) {
-        case '+':
-          res = num1 + num2;
-          break;
-        case '-':
-          res = num1 - num2;
-          break;
-        case '*':
-          res = num1 * num2;
-          break;
-        case '/':
-          if (num2 != 0) {
-            res = num1 / num2;
-          } else {
-            result = 'Không thể chia cho 0';
-            res = null;
-          }
-          break;
-      }
+  void buttonPressed(String buttonText) {
+    setState(() {
+      if (buttonText == "C") {
+        expression = '';
+        result = '';
+      } else if (buttonText == "DEL") {
+        expression = expression.isNotEmpty
+            ? expression.substring(0, expression.length - 1)
+            : '';
+      } else if (buttonText == "=") {
+        try {
+          Parser p = Parser();
+          Expression exp = p.parse(expression);
+          ContextModel cm = ContextModel();
+          double eval = exp.evaluate(EvaluationType.REAL, cm);
 
-      setState(() {
-        if (res != null) {
-          result = 'Kết quả: $res';
+          result = eval.toString();
+        } catch (e) {
+          result = "Lỗi";
         }
-      });
+      } else {
+        expression += buttonText;
+      }
+    });
+  }
+
+  Color getColor(String text) {
+    if (text == '=' || text == 'C' || text == 'DEL') {
+      return Colors.orange;
+    } else if (text == '+' ||
+        text == '-' ||
+        text == '*' ||
+        text == '/' ||
+        text == '(' ||
+        text == ')') {
+      return Colors.blueGrey;
+    } else {
+      return Colors.grey[200]!;
     }
   }
 
@@ -66,57 +95,79 @@ class _CalculatorState extends State<Calculator> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Calculator'),
+        title: Text('Máy tính cải tiến'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey, 
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextFormField(
-                controller: so1Controller,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Số thứ nhất',
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.all(16),
+              alignment: Alignment.bottomRight,
+              child: Text(
+                expression,
+                style: TextStyle(fontSize: 32),
+              ),
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.all(16),
+            alignment: Alignment.bottomRight,
+            child: Text(
+              result,
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Divider(),
+          Expanded(
+            flex: 2,
+            child: Container(
+              child: GridView.builder(
+                itemCount: buttons.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4, // Số cột
+                  mainAxisSpacing: 1,
+                  crossAxisSpacing: 1,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập số thứ nhất';
-                  }
-                  return null;
+                itemBuilder: (BuildContext context, int index) {
+                  return CalculatorButton(
+                    text: buttons[index],
+                    callback: buttonPressed,
+                    color: getColor(buttons[index]),
+                  );
                 },
               ),
-              TextFormField(
-                controller: so2Controller,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Số thứ hai',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập số thứ hai';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(onPressed: () => calculate("+"), child: Text("+")),
-                  ElevatedButton(onPressed: () => calculate("-"), child: Text("-")),
-                  ElevatedButton(onPressed: () => calculate("*"), child: Text("*")),
-                  ElevatedButton(onPressed: () => calculate("/"), child: Text("/")),
-                ],
-              ),
-              SizedBox(height: 20),
-              Text(
-                result,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CalculatorButton extends StatelessWidget {
+  final String text;
+  final Function callback;
+  final Color color;
+
+  CalculatorButton(
+      {required this.text, required this.callback, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        callback(text);
+      },
+      child: Container(
+        margin: EdgeInsets.all(1),
+        color: color,
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 24,
+              color: Colors.black,
+            ),
           ),
         ),
       ),
